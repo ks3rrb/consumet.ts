@@ -17,5 +17,5 @@ test('returns a filled object of movies/tv data', async () => {
 
 test('returns a filled object of streaming sources', async () => {
   const episodeSources = await flixhq.fetchEpisodeSources('1167571', 'tv/watch-vincenzo-67955');
-  expect(episodeSources.sources).not.toEqual([]);
+  expect(episodeSources.subtitles).not.toEqual([]);
 });

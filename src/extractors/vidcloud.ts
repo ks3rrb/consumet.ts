@@ -12,77 +12,85 @@ class VidCloud extends VideoExtractor {
 
   override extract = async (
     videoUrl: URL,
-    isAlternative: boolean = false
+    isAlternative: boolean = true
   ): Promise<{ sources: IVideo[] } & { subtitles: ISubtitle[] }> => {
     const result: { sources: IVideo[]; subtitles: ISubtitle[]; intro?: Intro } = {
       sources: [],
       subtitles: [],
     };
     try {
+      const keys = await (await this.client.get('https://keys4.fun')).data["rabbitstream"]["keys"];
       const id = videoUrl.href.split('/').pop()?.split('?')[0];
       const options = {
         headers: {
           'X-Requested-With': 'XMLHttpRequest',
           Referer: videoUrl.href,
-          'User-Agent': USER_AGENT,
+          'User-Agent': keys.agent || USER_AGENT,
         },
       };
       let res = undefined;
-      let sources = undefined;
+      let sources: any[] | undefined = undefined;
+
+      console.log("res.data", `${isAlternative ? this.host2 : this.host}/ajax/embed-4/getSources?id=${id}&v=${keys.v}&h=${keys.h}&b=${keys.b}`);
 
       res = await this.client.get(
-        `${isAlternative ? this.host2 : this.host}/ajax/embed-4/getSources?id=${id}`,
+        `${isAlternative ? this.host2 : this.host}/ajax/v2/embed-4/getSources?id=${id}&v=${keys.v}&h=${keys.h}&b=${keys.b}`,
         options
       );
+      console.log("res.data", res.data);
 
       if (false && !isJson(res.data.sources)) {
-           const keys = await (await this.client.get('https://raw.githubusercontent.com/eatmynerds/key/e4/key.txt')).data;
+           //const keys = await (await this.client.get('https://raw.githubusercontent.com/eatmynerds/key/e4/key.txt')).data;
+           
            const keyString = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(JSON.parse(keys)))));
            const decryptedVal = CryptoJS.AES.decrypt(res.data.sources, keyString).toString(CryptoJS.enc.Utf8);
            sources = JSON.parse(CryptoJS.AES.decrypt(res.data.sources, keyString).toString(CryptoJS.enc.Utf8)); 
            sources = isJson(decryptedVal) ? JSON.parse(decryptedVal) : res.data.sources;
       }
       else {
-        sources = res.data.sources;
+        sources = [];
       }
 
-      this.sources = sources.map((s: any) => ({
-        url: s.file,
-        isM3U8: s.file.includes('.m3u8'),
-      }));
+      // this.sources = sources.map((s: any) => ({
+      //   url: s.file,
+      //   isM3U8: s.file.includes('.m3u8'),
+      // }));
+      
 
       result.sources.push(...this.sources);
 
       result.sources = [];
       this.sources = [];
 
-      for (const source of sources) {
-        const { data } = await this.client.get(source.file, options);
-        const urls = data.split('\n').filter((line: string) => line.includes('.m3u8')) as string[];
-        const qualities = data.split('\n').filter((line: string) => line.includes('RESOLUTION=')) as string[];
+      // for (const source of sources) {
+      //   const { data } = await this.client.get(source.file, options);
+      //   const urls = data.split('\n').filter((line: string) => line.includes('.m3u8')) as string[];
+      //   const qualities = data.split('\n').filter((line: string) => line.includes('RESOLUTION=')) as string[];
 
-        const TdArray = qualities.map((s, i) => {
-          const f1 = s.split('x')[1];
-          const f2 = urls[i];
+      //   const TdArray = qualities.map((s, i) => {
+      //     const f1 = s.split('x')[1];
+      //     const f2 = urls[i];
 
-          return [f1, f2];
-        });
+      //     return [f1, f2];
+      //   });
 
-        for (const [f1, f2] of TdArray) {
-          this.sources.push({
-            url: f2,
-            quality: f1,
-            isM3U8: f2.includes('.m3u8'),
-          });
-        }
-        result.sources.push(...this.sources);
-      }
+      //   for (const [f1, f2] of TdArray) {
+      //     this.sources.push({
+      //       url: f2,
+      //       quality: f1,
+      //       isM3U8: f2.includes('.m3u8'),
+      //     });
+      //   }
+      //   result.sources.push(...this.sources);
+      // }
 
-      result.sources.push({
-        url: sources[0].file,
-        isM3U8: sources[0].file.includes('.m3u8'),
-        quality: 'auto',
-      });
+      // result.sources.push({
+      //   url: sources[0].file,
+      //   isM3U8: sources[0].file.includes('.m3u8'),
+      //   quality: 'auto',
+      // });
+
+      console.log("pass");
 
       result.subtitles = res.data.tracks.map((s: any) => ({
         url: s.file,
